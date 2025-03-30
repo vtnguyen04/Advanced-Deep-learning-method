@@ -13,7 +13,6 @@ import copy
 import math
 
 class MamlLearner(nn.Module):
-    """Phiên bản nâng cấp với các thành phần MAML++"""
     def __init__(self, input_dim: int = 1, hidden_dim: int = 64):
         super().__init__()
         self.layers = nn.ModuleDict({
@@ -22,7 +21,6 @@ class MamlLearner(nn.Module):
             'fc3': nn.Linear(hidden_dim, 1)
         })
 
-        # Khởi tạo parameters với Kaiming init
         for name, layer in self.layers.items():
             if isinstance(layer, nn.Linear):
                 nn.init.kaiming_normal_(layer.weight, nonlinearity='relu')
@@ -46,7 +44,7 @@ class MamlLearner(nn.Module):
 def _split_batch(batch: Dict[str, torch.Tensor]) -> List[Dict[str, torch.Tensor]]:
         """Split batch into individual tasks"""
         tasks = []
-        num_tasks = batch['support_input'].size(0)  # Số task trong batch
+        num_tasks = batch['support_input'].size(0)  
         
         for i in range(num_tasks):
             task = {
