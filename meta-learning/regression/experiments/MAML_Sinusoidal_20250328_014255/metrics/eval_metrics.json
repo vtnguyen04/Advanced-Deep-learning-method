@@ -1,0 +1,31 @@
+[
+    {
+        "step": 0,
+        "metrics": {
+            "pre_adapt_mse_mean": 10.662650179862975,
+            "pre_adapt_mse_std": 6.150838634156055,
+            "pre_adapt_mse_min": 2.9995381832122803,
+            "pre_adapt_mse_max": 19.29052734375,
+            "pre_adapt_mae_mean": 2.6330282211303713,
+            "pre_adapt_mae_std": 0.913369453426432,
+            "pre_adapt_mae_min": 1.4719412326812744,
+            "pre_adapt_mae_max": 3.7684686183929443,
+            "post_adapt_support_mse_mean": 0.012746997107751668,
+            "post_adapt_support_mse_std": 0.00925469974874844,
+            "post_adapt_support_mse_min": 0.003076884662732482,
+            "post_adapt_support_mse_max": 0.032561350613832474,
+            "post_adapt_support_mae_mean": 0.08190540000796317,
+            "post_adapt_support_mae_std": 0.03196021743255828,
+            "post_adapt_support_mae_min": 0.03949492797255516,
+            "post_adapt_support_mae_max": 0.14843085408210754,
+            "post_adapt_query_mse_mean": 0.015937492426019162,
+            "post_adapt_query_mse_std": 0.014487367979915832,
+            "post_adapt_query_mse_min": 0.0017156013054773211,
+            "post_adapt_query_mse_max": 0.04785328730940819,
+            "post_adapt_query_mae_mean": 0.08798549734055996,
+            "post_adapt_query_mae_std": 0.038028658965302345,
+            "post_adapt_query_mae_min": 0.03249787911772728,
+            "post_adapt_query_mae_max": 0.1638215035200119
+        }
+    }
+]
