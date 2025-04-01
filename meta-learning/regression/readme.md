@@ -155,6 +155,11 @@ To implement custom task distributions beyond sinusoidal functions:
 1. Extend the `SinusoidalTaskGenerator` class in `dataset.py` with your custom task logic
 2. Create a corresponding dataset class that generates your custom tasks
 
+## Results
+
+![task_predictions](https://github.com/user-attachments/assets/f53ef36d-860f-4983-8874-10a08adaddbc)
+
+
 ## License
 
 [MIT License](LICENSE)
