@@ -1,7 +1,6 @@
 # CIFAR-10 Image Classifier with PyTorch Lightning
 
 A flexible and easy-to-use image classification framework built with PyTorch Lightning for training various deep learning architectures on the CIFAR-10 dataset.
-
 ## Features
 
 - Support for multiple model architectures (AlexNet, ResNet, VGG, etc.)
@@ -11,7 +10,12 @@ A flexible and easy-to-use image classification framework built with PyTorch Lig
 - TensorBoard logging
 - Early stopping and model checkpointing
 - Beautiful progress tracking with colorful console output
-![image](https://github.com/user-attachments/assets/6ccbe959-a4e9-4a20-9f4d-95b2526bdde0)
+
+<!-- Hiển thị 2 hình ảnh trên cùng một hàng -->
+<div align="center">
+    <img src="https://github.com/user-attachments/assets/6ccbe959-a4e9-4a20-9f4d-95b2526bdde0" width="45%" />
+    <img src="https://github.com/user-attachments/assets/f16b24d2-1eef-4a4a-be16-ae5616c30134" width="45%" />
+</div>
 
 ## Installation
 
