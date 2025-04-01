@@ -11,6 +11,7 @@ A flexible and easy-to-use image classification framework built with PyTorch Lig
 - TensorBoard logging
 - Early stopping and model checkpointing
 - Beautiful progress tracking with colorful console output
+![image](https://github.com/user-attachments/assets/6ccbe959-a4e9-4a20-9f4d-95b2526bdde0)
 
 ## Installation
 
