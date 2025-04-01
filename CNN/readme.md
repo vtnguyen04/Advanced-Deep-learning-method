@@ -20,7 +20,7 @@ A flexible and easy-to-use image classification framework built with PyTorch Lig
 - PyTorch 1.7+
 - PyTorch Lightning
 - CUDA (optional, for GPU acceleration)
-
+```bash
 # Install dependencies
 pip install -r requirements.txt
 ```
