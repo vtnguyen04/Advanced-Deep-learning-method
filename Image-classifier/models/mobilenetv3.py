@@ -1,9 +1,10 @@
+
 import torch
 import torch.nn as nn
 import torchvision.models as models
 from typing import List, Callable
 
-def _make_divisible(v: float, divisor: int, min_value = None) -> int:
+def _make_divisible(v: float, divisor: int, min_value=None) -> int:
     if min_value is None:
         min_value = divisor
     new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
@@ -28,7 +29,7 @@ class h_swish(nn.Module):
         return x * self.sigmoid(x)
 
 class SELayer(nn.Module):
-    def __init__(self, channel, reduction = 4):
+    def __init__(self, channel, reduction=4):
         super(SELayer, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
@@ -62,27 +63,28 @@ class ConvBNActivation(nn.Sequential):
         if activation_layer is None:
             activation_layer = nn.ReLU6
         super(ConvBNActivation, self).__init__(
-            nn.Conv2d(in_planes, out_planes, kernel_size, stride, padding, dilation=dilation, groups=groups, bias=False),
+            nn.Conv2d(in_planes, out_planes, kernel_size, stride, padding, 
+                      dilation = dilation, groups = groups, bias = False),
             norm_layer(out_planes),
-            activation_layer(inplace=True)
+            activation_layer(inplace = True)
         )
+        self.out_channels = out_planes
 
 class InvertedResidual(nn.Module):
     def __init__(
         self,
         inp: int,
         oup: int,
+        kernel_size: int,
         stride: int,
-        expand_ratio: int,
+        expand_ratio: float,
         use_se: bool,
         use_hs: bool,
         norm_layer: Callable[..., nn.Module] = None,
     ):
         super(InvertedResidual, self).__init__()
-        if norm_layer is None:
-            norm_layer = nn.BatchNorm2d
-
         self.stride = stride
+        self.out_channels = oup
         assert stride in [1, 2]
 
         hidden_dim = int(round(inp * expand_ratio))
@@ -90,20 +92,23 @@ class InvertedResidual(nn.Module):
 
         layers = []
         if expand_ratio != 1:
-            layers.append(ConvBNActivation(inp, hidden_dim, kernel_size=1, norm_layer=norm_layer,
-                                           activation_layer=h_swish if use_hs else nn.ReLU))
-        layers.extend([
-            ConvBNActivation(hidden_dim, hidden_dim, stride=stride, groups=hidden_dim, norm_layer=norm_layer,
-                             activation_layer=h_swish if use_hs else nn.ReLU),
-            nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
-            norm_layer(oup),
-        ])
+            # pw
+            layers.append(ConvBNActivation(inp, hidden_dim, kernel_size = 1, norm_layer = norm_layer,
+                                          activation_layer = h_swish if use_hs else nn.ReLU))
+        
+        # dw
+        layers.append(ConvBNActivation(hidden_dim, hidden_dim, kernel_size = kernel_size, stride = stride, 
+                                      groups = hidden_dim, norm_layer = norm_layer,
+                                      activation_layer = h_swish if use_hs else nn.ReLU))
+        
         if use_se:
-            layers.append(SELayer(oup))
+            layers.append(SELayer(hidden_dim))
+
+        # pw-linear
+        layers.append(nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias = False))
+        layers.append(norm_layer(oup))
 
         self.conv = nn.Sequential(*layers)
-        self.out_channels = oup
-        self._is_cn = stride > 1
 
     def forward(self, x):
         if self.use_res_connect:
@@ -114,38 +119,67 @@ class InvertedResidual(nn.Module):
 class MobileNetV3(nn.Module):
     def __init__(
         self,
-        inverted_residual_setting: List,
-        last_channel: int,
+        cfgs: List,
+        mode: str,
         num_classes: int = 1000,
-        block: Callable[..., nn.Module] = InvertedResidual,
+        width_mult: float = 1.0,
         norm_layer: Callable[..., nn.Module] = None,
-        **kwargs
+        dropout: float = 0.2,
+        round_nearest: int = 8,
     ):
         super(MobileNetV3, self).__init__()
-
+        # Set default norm layer
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
-
-        layers = [ConvBNActivation(3, 16, stride=2, norm_layer=norm_layer, activation_layer=h_swish)]
-
-        for setting in inverted_residual_setting:
-            layers.append(block(setting[0], setting[1], setting[2], setting[3], setting[4], setting[5], norm_layer))
-
-        lastconv_input_c = inverted_residual_setting[-1][1]
-        lastconv_output_c = 6 * lastconv_input_c
-        layers.append(ConvBNActivation(lastconv_input_c, lastconv_output_c, kernel_size=1, norm_layer=norm_layer, activation_layer=h_swish))
+            
+        # setting of inverted residual blocks
+        # cfgs format: kernel, expansion, out_ch, use_se, use_hs, stride
+        
+        # building first layer
+        input_channel = _make_divisible(16 * width_mult, round_nearest)
+        layers = [ConvBNActivation(3, input_channel, 
+                                   stride = 2, 
+                                   norm_layer = norm_layer, 
+                                   activation_layer = h_swish)]
+        
+        # building inverted residual blocks
+        block = InvertedResidual
+        for k, exp, c, use_se, use_hs, s in cfgs:
+            output_channel = _make_divisible(c * width_mult, round_nearest)
+            layers.append(block(input_channel, output_channel, k, s, exp, use_se, use_hs, norm_layer))
+            input_channel = output_channel
+            
+        # building last several layers
+        if mode == 'large':
+            last_conv = _make_divisible(960 * width_mult, round_nearest)
+            layers.append(ConvBNActivation(input_channel, last_conv, 
+                                           kernel_size = 1,  
+                                           norm_layer = norm_layer, 
+                                           activation_layer = h_swish))
+            last_channel = 1280
+        else:
+            last_conv = _make_divisible(576 * width_mult, round_nearest)
+            layers.append(ConvBNActivation(input_channel, last_conv, 
+                                           kernel_size = 1, 
+                                           norm_layer = norm_layer, 
+                                           activation_layer = h_swish))
+            last_channel = 1024
+            
         self.features = nn.Sequential(*layers)
+        
+        # building classifier
         self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.classifier = nn.Sequential(
-            nn.Linear(lastconv_output_c, last_channel),
-            h_swish(inplace=True),
-            nn.Dropout(0.2),
+            nn.Linear(last_conv, last_channel),
+            h_swish(inplace = True),
+            nn.Dropout(p = dropout),
             nn.Linear(last_channel, num_classes),
         )
-
+        
+        # weight initialization
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out')
+                nn.init.kaiming_normal_(m.weight, mode = 'fan_out')
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
@@ -154,16 +188,22 @@ class MobileNetV3(nn.Module):
             elif isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.zeros_(m.bias)
-
-    def forward(self, x):
+                
+    def _forward_impl(self, x):
         x = self.features(x)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.classifier(x)
         return x
+    
+    def forward(self, x):
+        return self._forward_impl(x)
 
-def mobilenet_v3_large(num_classes: int = 1000):
-    inverted_residual_setting = [
+def mobilenet_v3_large(num_classes: int = 1000, width_mult: float = 1.0):
+    """
+    Constructs a MobileNetV3-Large model
+    """
+    cfgs = [
         # k, t, c, SE, HS, s
         [3, 1, 16, 0, 0, 1],
         [3, 4, 24, 0, 0, 2],
@@ -181,10 +221,13 @@ def mobilenet_v3_large(num_classes: int = 1000):
         [5, 6, 160, 1, 1, 1],
         [5, 6, 160, 1, 1, 1]
     ]
-    return MobileNetV3(inverted_residual_setting, 1280, num_classes)
+    return MobileNetV3(cfgs, 'large', num_classes, width_mult)
 
-def mobilenet_v3_small(num_classes: int = 1000):
-    inverted_residual_setting = [
+def mobilenet_v3_small(num_classes: int = 1000, width_mult: float = 1.0):
+    """
+    Constructs a MobileNetV3-Small model
+    """
+    cfgs = [
         # k, t, c, SE, HS, s
         [3, 1, 16, 1, 0, 2],
         [3, 4.5, 24, 0, 0, 2],
@@ -198,45 +241,50 @@ def mobilenet_v3_small(num_classes: int = 1000):
         [5, 6, 96, 1, 1, 1],
         [5, 6, 96, 1, 1, 1],
     ]
-    return MobileNetV3(inverted_residual_setting, 1024, num_classes)
+    return MobileNetV3(cfgs, 'small', num_classes, width_mult)
 
 def get_mobilenetv3(
     model_name: str,
     num_classes: int,
-    pretrained: bool = False
+    pretrained: bool = False,
+    width_mult: float = 1.0
 ):
     if pretrained:
-        if 'large' in model_name:
-            model = models.mobilenet_v3_large(pretrained=True)
+        if 'large' in model_name.lower():
+            model = models.mobilenet_v3_large(pretrained = True)
         else:
-            model = models.mobilenet_v3_small(pretrained=True)
-        for param in model.parameters():
+            model = models.mobilenet_v3_small(pretrained = True)
+        for param in model.parameters(): 
             param.requires_grad = False
         num_ftrs = model.classifier[-1].in_features
         model.classifier[-1] = nn.Linear(num_ftrs, num_classes)
     else:
-        if 'large' in model_name:
-            model = mobilenet_v3_large(num_classes)
+        if 'large' in model_name.lower():
+            model = mobilenet_v3_large(num_classes, width_mult)
         else:
-            model = mobilenet_v3_small(num_classes)
+            model = mobilenet_v3_small(num_classes, width_mult)
     return model
 
 def get_mobilenet_v3_large(
     num_classes: int,
-    pretrained: bool = False
+    pretrained: bool = False,
+    width_mult: float = 1.0
 ):
     return get_mobilenetv3(
         'mobilenet_v3_large',
         num_classes,
-        pretrained
+        pretrained,
+        width_mult
     )
 
 def get_mobilenet_v3_small(
     num_classes: int,
-    pretrained: bool = False
+    pretrained: bool = False,
+    width_mult: float = 1.0
 ):
     return get_mobilenetv3(
         'mobilenet_v3_small',
         num_classes,
-        pretrained
+        pretrained,
+        width_mult
     )

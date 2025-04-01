@@ -19,23 +19,22 @@ from get_models import get_model
 from tqdm import tqdm
 from colorama import Fore, Back, Style, init
 import pyfiglet
+import seaborn as sns
 
-# Khởi tạo colorama
+# init colorama
 init(autoreset = True)
 
-#%%
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-#%%
 """ Build Model """
 class ImageClassifierModel(pl.LightningModule):
     def __init__(
-            self,
-            model_name: str,
-            num_classes: int,
-            lr: float,
-            pretrained: bool = False
-        ):
+        self,
+        model_name: str,
+        num_classes: int,
+        lr: float,
+        pretrained: bool = False
+    ):
 
         super().__init__()
         self.model = get_model(
@@ -51,16 +50,12 @@ class ImageClassifierModel(pl.LightningModule):
             num_classes = num_classes
         )
 
-    def forward(
-        self,
-        inputs: torch.Tensor
-    ) -> torch.Tensor:
-        
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         return self.model(inputs)
 
     def training_step(
-        self,
-        batch: Tuple[torch.Tensor, torch.Tensor],
+        self, 
+        batch: Tuple[torch.Tensor, torch.Tensor], 
         batch_idx: int
     ) -> torch.Tensor:
         
@@ -69,26 +64,14 @@ class ImageClassifierModel(pl.LightningModule):
         loss = self.criterion(outputs, y)
         acc = self.accuracy(outputs, y)
 
-        self.log(
-            'train_loss', 
-            loss, 
-            on_step = True, 
-            on_epoch = True, 
-            prog_bar = True
-        )
-        self.log(
-            'train_acc', 
-            acc, 
-            on_epoch = True, 
-            prog_bar = True
-        )
+        self.log('train_loss', loss, on_step = True, on_epoch = True, prog_bar = True)
+        self.log('train_acc', acc, on_epoch = True, prog_bar = True)
         return {
             'loss': loss, 
             'train_acc': acc
         }
     
-    def validation_step(
-        self,
+    def validation_step(self,
         batch: Tuple[torch.Tensor, torch.Tensor],
         batch_idx: int
     ) -> Dict[str, torch.Tensor]:
@@ -97,18 +80,8 @@ class ImageClassifierModel(pl.LightningModule):
         outputs = self(X)
         loss = self.criterion(outputs, y)
         acc = self.accuracy(outputs, y)
-        self.log(
-            'val_loss', 
-            loss, 
-            on_epoch = True, 
-            prog_bar = True
-        )
-        self.log(
-            'val_acc', 
-            acc, 
-            on_epoch = True, 
-            prog_bar = True
-        )
+        self.log('val_loss', loss, on_epoch = True, prog_bar = True)
+        self.log('val_acc', acc, on_epoch = True, prog_bar = True)
         return {
             'val_loss': loss, 
             'val_acc': acc
@@ -124,16 +97,8 @@ class ImageClassifierModel(pl.LightningModule):
         loss = self.criterion(outputs, y)
         acc = self.accuracy(outputs, y)
         
-        self.log(
-            'test_loss', 
-            loss, 
-            on_epoch = True
-        )
-        self.log(
-            'test_acc', 
-            acc, 
-            on_epoch = True
-        )
+        self.log('test_loss', loss, on_epoch = True)
+        self.log('test_acc', acc, on_epoch = True)
         return {
             'test_loss': loss, 
             'test_acc': acc
@@ -141,8 +106,7 @@ class ImageClassifierModel(pl.LightningModule):
 
     def configure_optimizers(self) -> Dict[str, object]:
 
-        optimizer = optim.AdamW(self.parameters(), 
-                                lr = self.lr)
+        optimizer = optim.AdamW(self.parameters(), lr = self.lr)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, 
             mode = 'min', 
@@ -156,7 +120,6 @@ class ImageClassifierModel(pl.LightningModule):
             'monitor': 'val_loss'
         }
         
-#%%
 """ Show predicted results """
 
 def show_predictions(
@@ -164,40 +127,53 @@ def show_predictions(
     test_loader: DataLoader,
     num_images: int = 10
 ) -> None:
+    sns.set_theme()
     
     model.eval()
+    
     images, labels = next(iter(test_loader))
-    outputs = model(images)
-    _, preds = torch.max(outputs, 1)
     
-    _, axes = plt.subplots(
-        2, num_images // 2, 
-        figsize = (20, 8)
-    )
+    with torch.no_grad():
+        outputs = model(images)
+        _, preds = torch.max(outputs, 1)
+    
+    _, axes = plt.subplots(2, num_images // 2, figsize = (20, 8))
+    axes = axes.flatten()
+    
     incorrect_idx = torch.where(preds != labels)[0]
-
-    for i in range(num_images // 2):
-        axes[0, i].imshow(images[i].permute(1, 2, 0).cpu().numpy())
-        axes[0, i].set_title(
-            f'Pred: {preds[i]}\n \
-            True: {labels[i]}'
-        )
-        axes[0, i].axis('off')
-        
-        if incorrect_idx.numel() > i:
-            axes[1, i].imshow(images[incorrect_idx[i]].permute(1, 2, 0).cpu().numpy())
-            axes[1, i].set_title(
-                f'Pred: {preds[incorrect_idx[i]]}\n \
-                True: {labels[incorrect_idx[i]]}'
-            )
-            axes[1, i].axis('off')
     
+    for i in range(num_images):
+        ax = axes[i]
+        
+        if i < num_images // 2:
+            img_idx = i
+            title = f"Pred: {preds[img_idx]} - True: {labels[img_idx]}"
+            
+            if preds[img_idx] == labels[img_idx]:
+                title_color = "green"  
+            else:
+                title_color = "red"    
+            
+            ax.imshow(images[img_idx].permute(1, 2, 0).cpu().numpy())
+            ax.set_title(title, fontsize = 12, color = title_color, fontweight = 'bold')
+            ax.axis('off')
+        
+        else:
+            if incorrect_idx.numel() > i - num_images // 2:
+                img_idx = incorrect_idx[i - num_images // 2]
+                title = f"Pred: {preds[img_idx]} - True: {labels[img_idx]}"
+                
+                title_color = "red" 
+                ax.imshow(images[img_idx].permute(1, 2, 0).cpu().numpy())
+                ax.set_title(title, fontsize = 12, color = title_color, fontweight = 'bold')
+                ax.axis('off')
+            else:
+                ax.axis('off')  
+    
+    plt.savefig("results.png", dpi = 300, bbox_inches = 'tight')
     plt.tight_layout()
     plt.show()
 
-#%%
-
-""" Training process """
 
 def read_model_names(filename):
     with open(filename, 'r') as file:
@@ -284,59 +260,32 @@ class CustomTrainingCallback(Callback):
             f"{Fore.MAGENTA}Val Loss: {metrics['val_loss']:.4f}, \
             Val Acc: {metrics['val_acc']:.4f}"
         )
+
+def args_parse():
+
+    parser = argparse.ArgumentParser(description = 'Pytorch Lightning Classifier Model')
+
+    parser.add_argument('--model', type = str, default = 'AlexNet', choices = model_name, help = 'Model Architecture')
+
+    parser.add_argument('--pretrained', action = 'store_true', help = 'Model selection mode for training (default: False)')
+
+    parser.add_argument('--batch-size', type = int, default = 12, help = 'input batch size for training (default: 12)')
+
+    parser.add_argument('--epochs', type = int, default = 10, help = 'number of epochs to train (default: 10)')
+    
+    parser.add_argument('--lr', type = float, default = 0.001, help = 'learning rate (default: 0.001)')
+
+    parser.add_argument('--no-cuda', action = 'store_true', default = False, help = 'disables CUDA training')
+
+    parser.add_argument('--seed', type = int, default = 1, help = 'random seed (default: 1)')
+    
+    return parser.parse_args()
         
 def main() -> None:
 
     torch.cuda.empty_cache()
 
-    parser = argparse.ArgumentParser(
-        description = 'Pytorch Lightning Classifier Model'
-    )
-
-    parser.add_argument(
-        '--model', 
-        type = str, 
-        default = 'AlexNet',
-        choices = model_name, 
-        help = 'Model Architecture'
-    )
-    parser.add_argument(
-        '--pretrained', 
-        action = 'store_true',
-        help = 'Model selection mode for training (default: False)'
-    )
-    parser.add_argument(
-        '--batch-size', 
-        type = int, 
-        default = 12, 
-        help = 'input batch size for training (default: 12)'
-    )
-    parser.add_argument(
-        '--epochs', 
-        type = int, 
-        default = 10, 
-        help = 'number of epochs to train (default: 10)'
-    )
-    parser.add_argument(
-        '--lr', 
-        type = float, 
-        default = 0.001, 
-        help = 'learning rate (default: 0.001)'
-    )
-    parser.add_argument(
-        '--no-cuda', 
-        action = 'store_true', 
-        default = False, 
-        help = 'disables CUDA training'
-    )
-    parser.add_argument(
-        '--seed', 
-        type = int, 
-        default = 1, 
-        help = 'random seed (default: 1)'
-    )
-    
-    args = parser.parse_args()
+    args = args_parse()
 
     pl.seed_everything(args.seed)
 
@@ -410,11 +359,9 @@ def main() -> None:
         name = args.model
     )
     
-    # Tạo banner đẹp mắt
     banner = pyfiglet.figlet_format("CIFAR-10 Training", font = "slant")
     tqdm.write(f"{Fore.CYAN}{banner}")
 
-    # Thêm custom callback vào trainer
     custom_callback = CustomTrainingCallback()
     trainer = pl.Trainer(
         max_epochs = args.epochs,
@@ -423,7 +370,7 @@ def main() -> None:
         log_every_n_steps = 10,
         accelerator = 'gpu' if torch.cuda.is_available() else 'cpu',
         devices = 1 if torch.cuda.is_available() else None,
-        enable_progress_bar = False,  # Tắt thanh tiến trình mặc định
+        enable_progress_bar = False, 
     )
 
     # Training

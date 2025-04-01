@@ -3,12 +3,7 @@ import torch.nn as nn
 import torchvision.models as models
 from typing import List, Union
 
-def make_divisible(
-    self, 
-    v: float, 
-    divisor: int, 
-    min_value = None
-) -> int:
+def make_divisible(v: float, divisor: int, min_value = None) -> int:
     if min_value is None:
         min_value = divisor
     new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
@@ -57,35 +52,17 @@ class InvertedResidual(nn.Module):
 
         layers = []
         if expand_ratio != 1:
-            layers.append(
-                ConvBNReLU(
-                    in_channels, 
-                    hidden_dim, 
-                    kernel_size = 1
-                )
-            )
+            layers.append(ConvBNReLU(in_channels, hidden_dim, kernel_size = 1))
 
         layers.extend([
-            ConvBNReLU(
-                hidden_dim, 
-                hidden_dim, 
-                stride = stride, 
-                groups = hidden_dim
-            ),
-            nn.Conv2d(
-                hidden_dim, 
-                out_channels, 
-                1, 1, 0, 
-                bias = False
-            ),
-            nn.BatchNorm2d(out_channels),
+            ConvBNReLU(hidden_dim, hidden_dim, stride = stride, groups = hidden_dim),
+            nn.Conv2d(hidden_dim, out_channels, 1, 1, 0, bias = False),
+            nn.BatchNorm2d(out_channels)
         ])
+        
         self.conv = nn.Sequential(*layers)
 
-    def forward(
-        self, 
-        inputs: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         if self.use_res_connect:
             return inputs + self.conv(inputs)
         else:
@@ -133,23 +110,10 @@ class MobileNetV2(nn.Module):
             )
             for i in range(n):
                 stride = s if i == 0 else 1
-                features.append(
-                    block(
-                        in_channels, 
-                        output_channel, 
-                        stride, 
-                        expand_ratio = t
-                    )
-                )
+                features.append(block(in_channels, output_channel, stride, expand_ratio = t))
                 in_channels = output_channel
         
-        features.append(
-            ConvBNReLU(
-                in_channels, 
-                self.last_channel, 
-                kernel_size = 1
-            )
-        )
+        features.append(ConvBNReLU(in_channels, self.last_channel, kernel_size = 1))
         self.features = nn.Sequential(*features)
 
         self.classifier = nn.Sequential(
@@ -159,10 +123,7 @@ class MobileNetV2(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(
-                    m.weight, 
-                    mode = 'fan_out'
-                )
+                nn.init.kaiming_normal_(m.weight, mode = 'fan_out')
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
             elif isinstance(m, nn.BatchNorm2d):
@@ -172,61 +133,39 @@ class MobileNetV2(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.zeros_(m.bias)
 
-    
-
-    def forward(
-        self, 
-        x: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.features(x)
         x = x.mean([2, 3])
         x = self.classifier(x)
         return x
 
-def mobilenet_v2(
-    num_classes: int = 1000,
-    width_mult: float = 1.0
-):
-    return MobileNetV2(
-        num_classes = num_classes,
-        width_mult = width_mult
-    )
-
 def get_mobilenetv2(
-    model_name: str,
     num_classes: int,
     pretrained: bool = False,
     width_mult: float = 1.0
 ):
-    if pretrained:
-        model = models.mobilenet_v2(pretrained = True)
-
-        for param in model.parameters():
-            param.requires_grad = False
-
-        num_ftrs = model.classifier[1].in_features
-        
-        model.classifier = nn.Sequential(
-            nn.Linear(num_ftrs, 512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, num_classes)
-        )
-    else:
-        model = mobilenet_v2(
+    if not pretrained:
+        return MobileNetV2(
             num_classes = num_classes,
             width_mult = width_mult
         )
-    return model
+        
 
-def get_mobilenet_v2(
-    num_classes: int,
-    pretrained: bool = False,
-    width_mult: float = 1.0
-):
-    return get_mobilenetv2(
-        'mobilenet_v2',
-        num_classes,
-        pretrained,
-        width_mult
+    model = models.mobilenet_v2(pretrained = True)
+
+    for param in model.parameters():
+        param.requires_grad = False
+
+    num_ftrs = model.classifier[1].in_features
+    
+    model.classifier = nn.Sequential(
+        nn.Linear(num_ftrs, 512),
+        nn.ReLU(),
+        nn.Dropout(0.3),
+        nn.Linear(512, num_classes)
     )
+    return model
+  
+
+def get_mobilenet_v2(num_classes: int, pretrained: bool = False, width_mult: float = 1.0):
+    return get_mobilenetv2(num_classes, pretrained, width_mult)

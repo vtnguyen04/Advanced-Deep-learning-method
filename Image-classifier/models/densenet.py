@@ -108,7 +108,7 @@ class DenseNet(nn.Module):
     def __init__(
         self, 
         block_config: List[int],
-        in_channels = 1,
+        in_channels = 3,
         growth_rate: int = 32, 
         num_init_channels: int = 64, 
         bn_size: int = 4, 

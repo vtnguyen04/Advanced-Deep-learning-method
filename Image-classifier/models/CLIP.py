@@ -4,6 +4,9 @@ import torch.nn.functional as F
 from torchvision.models import resnet50
 from transformers import BertModel, BertTokenizer
 import clip
+import numpy as np
+from PIL import Image
+from torchvision import transforms
 
 class ImageEncoder(nn.Module):
     def __init__(self, embed_dim):
@@ -21,7 +24,7 @@ class TextEncoder(nn.Module):
         self.fc = nn.Linear(self.bert.config.hidden_size, embed_dim)
         
     def forward(self, input_ids, attention_mask):
-        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        outputs = self.bert(input_ids = input_ids, attention_mask=attention_mask)
         return self.fc(outputs.pooler_output)
 
 class CLIP(nn.Module):

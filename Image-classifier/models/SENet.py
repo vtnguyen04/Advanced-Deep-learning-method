@@ -217,40 +217,43 @@ class SENet(nn.Module):
 
         return x
 
-def se_resnet50(num_classes: int = 1000,
-                pretrained: bool = False) -> nn.Module:
-    if pretrained:
-        model = timm.create_model('seresnet50', 
-                                  pretrained = True)
-        if num_classes != 1000:
-            model.fc = nn.Linear(model.fc.in_features, 
-                                 num_classes)
-    else:
-        model = SENet(Bottleneck, 
-                      [3, 4, 6, 3], 
-                      num_classes = num_classes)
-    return model
+def se_resnet(model_name: str, 
+                  num_classes: int = 1000, 
+                  pretrained: bool = False) -> nn.Module:
+    model_configs = {
+        'se_resnet50': {
+            'timm_name': 'seresnet50',
+            'layers': [3, 4, 6, 3]
+        },
+        'se_resnet101': {
+            'timm_name': 'seresnet101',
+            'layers': [3, 4, 23, 3]
+        },
+        'se_resnet152': {
+            'timm_name': 'seresnet152',
+            'layers': [3, 8, 36, 3]
+        }
+    }
 
-def se_resnet101(num_classes: int = 1000,
-                 pretrained: bool = False) -> nn.Module:
-    if pretrained:
-        model = timm.create_model('seresnet101', 
-                                  pretrained = True)
-        if num_classes != 1000:
-            model.fc = nn.Linear(model.fc.in_features, 
-                                 num_classes)
-    else:
-        model = SENet(Bottleneck, 
-                      [3, 4, 23, 3],
-                      num_classes = num_classes)
-    return model
+    config = model_configs.get(model_name)
+    if config is None:
+        raise ValueError(f"Unsupported model_name: {model_name}")
 
-def se_resnet152(num_classes: int = 1000,
-                 pretrained: bool = False) -> nn.Module:
     if pretrained:
-        model = timm.create_model('seresnet152', pretrained = True)
+        model = timm.create_model(config['timm_name'], pretrained=True)
+        
         if num_classes != 1000:
             model.fc = nn.Linear(model.fc.in_features, num_classes)
     else:
-        model = SENet(Bottleneck, [3, 8, 36, 3], num_classes = num_classes)
+        model = SENet(Bottleneck, config['layers'], num_classes=num_classes)
+    
     return model
+
+def get_se_resnet50(num_classes: int = 1000, pretrained: bool = False) -> nn.Module:
+    return se_resnet('se_resnet50', num_classes, pretrained)
+
+def get_se_resnet101(num_classes: int = 1000, pretrained: bool = False) -> nn.Module:
+    return se_resnet('se_resnet101', num_classes, pretrained)
+
+def get_se_resnet152(num_classes: int = 1000, pretrained: bool = False) -> nn.Module:
+    return se_resnet('se_resnet152', num_classes, pretrained)

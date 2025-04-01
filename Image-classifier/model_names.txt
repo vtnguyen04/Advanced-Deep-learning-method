@@ -15,7 +15,7 @@ EfficientNet-b0
 EfficientNet-b1
 EfficientNet-b2
 EfficientNetv2
-NasNet-small
+NasNet-mobile
 NasNet-large
 SeResNet50
 SeResNet101
