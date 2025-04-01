@@ -124,6 +124,7 @@ You can customize the data preprocessing pipeline by modifying the `transform` i
 
 - **TensorBoard**: Training metrics are logged to TensorBoard. Run `tensorboard --logdir = runs` to view the training progress.
 - **Prediction Visualization**: After training, the script visualizes model predictions on test samples.
+![results](https://github.com/user-attachments/assets/e8e62148-d2ec-4e0c-baf6-15ee2b974723)
 
 ## License
 
