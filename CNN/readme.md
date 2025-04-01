@@ -13,15 +13,15 @@ A flexible and easy-to-use image classification framework built with PyTorch Lig
 
 <!-- Hiển thị 2 hình ảnh trên cùng một hàng -->
 <div align="center">
-    <img src="https://github.com/user-attachments/assets/6ccbe959-a4e9-4a20-9f4d-95b2526bdde0" width="45%" />
-    <img src="https://github.com/user-attachments/assets/f16b24d2-1eef-4a4a-be16-ae5616c30134" width="45%" />
+    <img src="https://github.com/user-attachments/assets/6ccbe959-a4e9-4a20-9f4d-95b2526bdde0" width="65%" />
+    <img src="https://github.com/user-attachments/assets/f16b24d2-1eef-4a4a-be16-ae5616c30134" width="30%" />
 </div>
 
 ## Installation
 
 ### Requirements
 
-- Python 3.6+
+- Python 3.8+
 - PyTorch 1.7+
 - PyTorch Lightning
 - CUDA (optional, for GPU acceleration)
@@ -57,7 +57,7 @@ pip install requirements.txt
 To train a model, run the `CIFAR-10_train.py` script with your desired parameters:
 
 ```bash
-python CIFAR-10_train.py --model AlexNet --pretrained True --batch-size 15 --epochs 5 --lr 0.001
+python CIFAR-10_train.py --model AlexNet --pretrained --batch-size 15 --epochs 5 --lr 0.001
 ```
 
 ### Command-line Arguments
@@ -79,7 +79,7 @@ The model architectures available for training are listed in the `model_names.tx
 Some of the supported models include:
 - AlexNet
 - ResNet (various versions)
-- VGG (various versions)
+- VGG16
 - DenseNet
 - EfficientNet
 - MobileNet
