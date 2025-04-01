@@ -1,0 +1,10 @@
+torch
+torchvision
+torchinfo 
+pytorch-lightning
+colorama
+torchmetrics
+matplotlib
+pyfiglet
+timm
+einops
