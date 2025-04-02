@@ -4,7 +4,7 @@ import torch.nn as nn
 import torchvision.models as models
 from typing import List, Callable
 
-def _make_divisible(v: float, divisor: int, min_value=None) -> int:
+def _make_divisible(v: float, divisor: int, min_value = None) -> int:
     if min_value is None:
         min_value = divisor
     new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
